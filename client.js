@@ -129,7 +129,9 @@ async function boot() {
   // navigator.serviceWorker.getRegistration()`
   log("Subscribe to updates");
   swRegistration.addEventListener("updatefound", async () => {
-    // To access the registration we use the `swRegistration` variable in the outer scope. In case we don't have access to it, we can also use `this`, i.e. `const registration = this`.
+    // To access the registration we use the `swRegistration` variable in the
+    // outer scope. In case we don't have access to it, we can also use `this`,
+    // i.e. `const registration = this`.
     log("Update found");
     // Look how cool! To get the new Service Worker we use the `installing`
     // attribute of the registration.
