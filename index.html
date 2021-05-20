@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width" />
     <title>Service Worker Playground</title>
     <link href="style.css" rel="stylesheet" />
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <!-- Apple specific -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
   </head>
 
   <body>
     <h1>Service Worker API Playground</h1>
+    <button id="reloadApp">Reload App</button>
     <button id="checkForUpdates">Check for Updates</button>
     <button id="updateServiceWorker" class="hide">Update Service Worker</button>
     <ul id="log"></ul>

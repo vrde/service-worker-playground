@@ -162,6 +162,11 @@ async function boot() {
     log("Check for updates");
     swRegistration.update();
   });
+
+  // Reload app
+  document
+    .getElementById("reloadApp")
+    .addEventListener("click", () => window.location.reload());
 }
 
 // # Paraphernalia
