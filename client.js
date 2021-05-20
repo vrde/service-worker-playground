@@ -1,3 +1,175 @@
+// # Service Worker API playground
+//
+// Hello, and welcome to the Service Worker API Playground!
+// It took me a while to understand how to use the Service Worker API, and how
+// to write code that would behave as expected on different browsers and
+// platforms. Specifically, there are some subtle differences between Safari and
+// other browsers.
+//
+// Before we dig into the details, let's have a quick overview of how things work.
+//
+// - `navigator.serviceWorker` is **not** a Service Worker, it's a Service
+// Worker Container.
+
+async function boot() {
+  // Let's start!
+  log("Booting");
+
+  // ## Get the current registration
+  //
+  // First, we check if we already have a registration.
+  // A [Service Worker Registation][mdn:ServiceWorkerRegistration] is an object
+  // that keeps track of the registration status of the service worker.
+  // You can query the registration to know which service worker is installed,
+  // waiting, or active in the current scope.
+  // The registration can be `undefined` if nothing was registered in the
+  // current scope, or on the very first run of a web page *before* the
+  // installation of its Service Worker. So when you run this code for the first time,
+  // `swRegistration` will be `undefined`.
+  const swCurrentRegistration = await navigator.serviceWorker.getRegistration();
+  if (swCurrentRegistration) {
+    log("SW Registration found");
+  } else {
+    log("No SW Registration found");
+  }
+
+  // ## Get the controller
+  //
+  // We can also check who's the controller, that is the Service Worker
+  // controlling the current scope. It can be `null` during a *force-refresh*
+  // request (Shift + refresh) or if there is no active worker.
+  //
+  // Note: I think Safari returns a stale Service Worker if: 1) a new service worker
+  // is waiting to get activated; and 2) the user reloaded the page.
+  const swController = navigator.serviceWorker.controller;
+  if (swController) {
+    try {
+      // In this case, Safari raises an `InvalidStateError: Service Worker state
+      // is redudant` if we try to post a message to the current controller
+      // (that is not the current controller... I have a hard time wrapping my
+      // head around this, maybe Safari updates the Service Worker with some
+      // other logic).
+      const info = await post({ action: "info" }, swController);
+      log("Controller found", info.message);
+    } catch (e) {
+      log("Error talking to controller", e);
+    }
+  } else {
+    log("No Controller found");
+  }
+
+  // ## Create a registration
+  //
+  // Now it's time to install your Service Worker. Aren't you excited? I'm not
+  // because dealing with Service Workers is a bloodbath. But it's too late now
+  // to go back. Also, I wrote this guide specifically for you so it would be
+  // nice if you continue reading it.
+
+  // Registering a Service Worker is an idempotent operation. You can do it when
+  // starting the app, and even if you already registered the same Service
+  // Worker before, nothing weird will happen. I guess that's the best practice
+  // actually.
+  let swRegistration;
+  try {
+    log("Register the Service Worker");
+    swRegistration = await navigator.serviceWorker.register(
+      "service-worker.js"
+    );
+  } catch (e) {
+    log("Error", e);
+    console.log(e);
+    throw e;
+  }
+
+  // Now the fun part: checking the state of the Service Worker using the
+  // registration object.
+  let serviceWorker;
+
+  if (swRegistration.installing) {
+    // `installing` is undefined, or contains the instance of the Service Worker
+    // currently installing. When the page is visited for the first time, and
+    // after the `register` method is called, `installing` contains the
+    // Service Worker instance.
+    serviceWorker = swRegistration.installing;
+    const info = await post({ action: "info" }, serviceWorker);
+    log("Installing", info.message);
+  } else if (swRegistration.waiting) {
+    // `waiting` is undefined, or contains the instance of the Service Worker
+    // waiting to be activated.
+    serviceWorker = swRegistration.waiting;
+    const info = await post({ action: "info" }, serviceWorker);
+    log("Waiting", info.message);
+    promptForUpdate(serviceWorker);
+  } else if (swRegistration.active) {
+    // `active` is undefined, or contains the instance of the Service Worker
+    // that controls the page. This property is the same as
+    // `navigator.serviceWorker.controller`.
+    serviceWorker = swRegistration.active;
+    const info = await post({ action: "info" }, serviceWorker);
+    log("Active", info.message);
+  }
+
+  // Might have different serviceWorker in different states
+  if (serviceWorker) {
+    // Now we can subscribe to the state changes of the Service Worker.
+    serviceWorker.addEventListener("statechange", async (e) => {
+      try {
+        const info = await post({ action: "info" }, e.target);
+        log("SW state change", e.target.state, info.message);
+      } catch (e) {
+        log("SW state change error, probably stale worker", e);
+      }
+    });
+  }
+
+  // ## Update the Service Worker
+  //
+  // We reuse the `swRegistration` object we defined before. In case you want to
+  // isolate this in a sparate function, you can use `await
+  // navigator.serviceWorker.getRegistration()`
+  log("Subscribe to updates");
+  swRegistration.addEventListener("updatefound", async () => {
+    // To access the registration we use the `swRegistration` variable in the outer scope. In case we don't have access to it, we can also use `this`, i.e. `const registration = this`.
+    log("Update found");
+    // Look how cool! To get the new Service Worker we use the `installing`
+    // attribute of the registration.
+    const newSW = swRegistration.installing;
+
+    newSW.addEventListener("statechange", async (e) => {
+      const info = await post({ action: "info" }, e.target);
+      log("New SW state change", e.target.state, info.message);
+    });
+
+    // We can wait until the new Service Worker is ready to prompt the user to
+    // update it.
+    await newSW.ready;
+    promptForUpdate(newSW);
+  });
+
+  // ## Check for updates
+  //
+  // The browser checks for updates every time the page is reloaded. To smooth
+  // the update process, we can check for updates periodically and manually.
+
+  // To check for updates periodically, you can run the `update` method at specific intervals.
+  window.setInterval(() => {
+    log("Check for updates");
+    swRegistration.update();
+  }, 60000);
+
+  // To check for updates manually, you can bind it to a button.
+  document.getElementById("checkForUpdates").addEventListener("click", () => {
+    log("Check for updates");
+    swRegistration.update();
+  });
+}
+
+// # Paraphernalia
+
+// ## Boot the application
+boot().catch(console.log);
+
+// ## Communicate with a specific Service Worker
 async function post(message, sw) {
   if (!sw) {
     sw = navigator.serviceWorker.controller;
@@ -18,6 +190,7 @@ async function post(message, sw) {
   });
 }
 
+// ## Log in the document
 function log(...args) {
   const now = new Date();
   const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map((x) =>
@@ -29,121 +202,15 @@ function log(...args) {
   container.appendChild(line);
 }
 
+// ## Show or hide the update button
 function promptForUpdate(newSW) {
-  if (confirm("Update Service Worker?")) {
+  const button = document.getElementById("updateServiceWorker");
+  button.classList.remove("hide");
+  button.addEventListener("click", async () => {
     post({ action: "skipWaiting" }, newSW);
-  }
-}
-
-async function register() {
-  let registration;
-  try {
-    log("Get Service Worker registration");
-    registration = await navigator.serviceWorker.register("service-worker.js");
-  } catch (e) {
-    log("Error", e);
-    console.log(e);
-  }
-
-  let serviceWorker;
-  if (registration.installing) {
-    serviceWorker = registration.installing;
-    const info = await post({ action: "info" }, serviceWorker);
-    log("Installing", info.message);
-  } else if (registration.waiting) {
-    serviceWorker = registration.waiting;
-    const info = await post({ action: "info" }, serviceWorker);
-    log("Waiting", info.message);
-    promptForUpdate(serviceWorker);
-  } else if (registration.active) {
-    serviceWorker = registration.active;
-    const info = await post({ action: "info" }, serviceWorker);
-    log("Active", info.message);
-  }
-
-  if (serviceWorker) {
-    serviceWorker.addEventListener("statechange", async (e) => {
-      try {
-        const info = await post({ action: "info" }, e.target);
-        log("SW state change", e.target.state, info.message);
-      } catch (e) {
-        log("SW state change error, probably stale worker", e);
-      }
-    });
-  }
-}
-
-async function onUpdateFound() {
-  const registration = this;
-  const newSW = registration.installing;
-
-  console.log("Update found", this);
-  log("Update found");
-
-  newSW.addEventListener("statechange", async (e) => {
-    const info = await post({ action: "info" }, e.target);
-    log("New SW state change", e.target.state, info.message);
+    button.classList.add("hide");
   });
-
-  await newSW.ready;
-  promptForUpdate(newSW);
 }
-
-async function update() {
-  const registration = await navigator.serviceWorker.getRegistration();
-  log("Subscribe to updates");
-  if (registration) {
-    registration.addEventListener("updatefound", onUpdateFound);
-  }
-}
-
-// # Service Worker API playground
-//
-// Hello, and welcome to the Service Worker API Playground!
-// It took me a while to understand how to use the Service Worker API, and how
-// to write code that would behave as expected on different browsers and
-// platforms. Specifically, there are some subtle differences between Safari and
-// other browsers.
-//
-// Before we dig into the details, let's have a quick overview of how things work.
-
-async function boot() {
-  // Let's start!
-  log("Booting");
-
-  // First, we check if we already have a registration.
-  // A [Service Worker Registation][mdn:ServiceWorkerRegistration] is an object
-  // that keeps track of the registration status of the service worker.
-  // You can query the registration to know which service worker is installed,
-  // waiting, or active in the current scope.
-  // The registration can be `undefined` if nothing was registered in the
-  // current scope.
-  const swRegistration = await navigator.serviceWorker.getRegistration();
-  if (swRegistration) {
-    log("SW Registration found");
-  } else {
-    log("No SW Registration found");
-  }
-
-  // Another way to get the registration is to call the register method.
-
-  const swActive = navigator.serviceWorker.controller;
-  await swActive.ready;
-  if (swActive) {
-    try {
-      const info = await post({ action: "info" });
-      log("Controller found", info.message);
-    } catch (e) {
-      log("Error talking to controller", e);
-    }
-  } else {
-    log("No Controller found");
-  }
-
-  await register();
-  await update();
-}
-boot().catch(console.log);
 
 // [hide-and-seek]: https://www.thinktecture.com/en/pwa/playing-hide-and-seek-with-my-serviceworker-instance/
 // [mdn:ServiceWorkerRegistration]: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
