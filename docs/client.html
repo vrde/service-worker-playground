@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Service Worker API playground</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-1">&#x00a7;</a>
+              </div>
+              <h1 id="service-worker-api-playground">Service Worker API playground</h1>
+<p>Hello, and welcome to the Service Worker API Playground!
+It took me a while to understand how to use the Service Worker API, and how
+to write code that would behave as expected on different browsers and
+platforms. Specifically, there are some subtle differences between Safari and
+other browsers.</p>
+<p>Before we dig into the details, let’s have a quick overview of how things work.</p>
+<ul>
+<li><code>navigator.serviceWorker</code> is <strong>not</strong> a Service Worker, it’s a Service
+Worker Container.</li>
+</ul>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">boot</span>(<span class="hljs-params"></span>) </span>{</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-2">&#x00a7;</a>
+              </div>
+              <p>Let’s start!</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  log(<span class="hljs-string">&quot;Booting&quot;</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-3">&#x00a7;</a>
+              </div>
+              <h2 id="get-the-current-registration">Get the current registration</h2>
+<p>First, we check if we already have a registration.
+A [Service Worker Registation][mdn:ServiceWorkerRegistration] is an object
+that keeps track of the registration status of the service worker.
+You can query the registration to know which service worker is installed,
+waiting, or active in the current scope.
+The registration can be <code>undefined</code> if nothing was registered in the
+current scope, or on the very first run of a web page <em>before</em> the
+installation of its Service Worker. So when you run this code for the first time,
+<code>swRegistration</code> will be <code>undefined</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">const</span> swCurrentRegistration = <span class="hljs-keyword">await</span> navigator.serviceWorker.getRegistration();
+  <span class="hljs-keyword">if</span> (swCurrentRegistration) {
+    log(<span class="hljs-string">&quot;SW Registration found&quot;</span>);
+  } <span class="hljs-keyword">else</span> {
+    log(<span class="hljs-string">&quot;No SW Registration found&quot;</span>);
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-4">&#x00a7;</a>
+              </div>
+              <h2 id="get-the-controller">Get the controller</h2>
+<p>We can also check who’s the controller, that is the Service Worker
+controlling the current scope. It can be <code>null</code> during a <em>force-refresh</em>
+request (Shift + refresh) or if there is no active worker.</p>
+<p>Note: I think Safari returns a stale Service Worker if: 1) a new service worker
+is waiting to get activated; and 2) the user reloaded the page.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">const</span> swController = navigator.serviceWorker.controller;
+  <span class="hljs-keyword">if</span> (swController) {
+    <span class="hljs-keyword">try</span> {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-5">&#x00a7;</a>
+              </div>
+              <p>In this case, Safari raises an <code>InvalidStateError: Service Worker state is redudant</code> if we try to post a message to the current controller
+(that is not the current controller… I have a hard time wrapping my
+head around this, maybe Safari updates the Service Worker with some
+other logic).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, swController);
+      log(<span class="hljs-string">&quot;Controller found&quot;</span>, info.message);
+    } <span class="hljs-keyword">catch</span> (e) {
+      log(<span class="hljs-string">&quot;Error talking to controller&quot;</span>, e);
+    }
+  } <span class="hljs-keyword">else</span> {
+    log(<span class="hljs-string">&quot;No Controller found&quot;</span>);
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-6">&#x00a7;</a>
+              </div>
+              <h2 id="create-a-registration">Create a registration</h2>
+<p>Now it’s time to install your Service Worker. Aren’t you excited? I’m not
+because dealing with Service Workers is a bloodbath. But it’s too late now
+to go back. Also, I wrote this guide specifically for you so it would be
+nice if you continue reading it.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-7">&#x00a7;</a>
+              </div>
+              <p>Registering a Service Worker is an idempotent operation. You can do it when
+starting the app, and even if you already registered the same Service
+Worker before, nothing weird will happen. I guess that’s the best practice
+actually.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">let</span> swRegistration;
+  <span class="hljs-keyword">try</span> {
+    log(<span class="hljs-string">&quot;Register the Service Worker&quot;</span>);
+    swRegistration = <span class="hljs-keyword">await</span> navigator.serviceWorker.register(
+      <span class="hljs-string">&quot;service-worker.js&quot;</span>
+    );
+  } <span class="hljs-keyword">catch</span> (e) {
+    log(<span class="hljs-string">&quot;Error&quot;</span>, e);
+    <span class="hljs-built_in">console</span>.log(e);
+    <span class="hljs-keyword">throw</span> e;
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-8">&#x00a7;</a>
+              </div>
+              <p>Now the fun part: checking the state of the Service Worker using the
+registration object.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">let</span> serviceWorker;
+
+  <span class="hljs-keyword">if</span> (swRegistration.installing) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-9">&#x00a7;</a>
+              </div>
+              <p><code>installing</code> is undefined, or contains the instance of the Service Worker
+currently installing. When the page is visited for the first time, and
+after the <code>register</code> method is called, <code>installing</code> contains the
+Service Worker instance.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    serviceWorker = swRegistration.installing;
+    <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, serviceWorker);
+    log(<span class="hljs-string">&quot;Installing&quot;</span>, info.message);
+  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (swRegistration.waiting) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-10">&#x00a7;</a>
+              </div>
+              <p><code>waiting</code> is undefined, or contains the instance of the Service Worker
+waiting to be activated.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    serviceWorker = swRegistration.waiting;
+    <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, serviceWorker);
+    log(<span class="hljs-string">&quot;Waiting&quot;</span>, info.message);
+    promptForUpdate(serviceWorker);
+  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (swRegistration.active) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-11">&#x00a7;</a>
+              </div>
+              <p><code>active</code> is undefined, or contains the instance of the Service Worker
+that controls the page. This property is the same as
+<code>navigator.serviceWorker.controller</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    serviceWorker = swRegistration.active;
+    <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, serviceWorker);
+    log(<span class="hljs-string">&quot;Active&quot;</span>, info.message);
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-12">&#x00a7;</a>
+              </div>
+              <p>Might have different serviceWorker in different states</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> (serviceWorker) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-13">&#x00a7;</a>
+              </div>
+              <p>Now we can subscribe to the state changes of the Service Worker.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    serviceWorker.addEventListener(<span class="hljs-string">&quot;statechange&quot;</span>, <span class="hljs-keyword">async</span> (e) =&gt; {
+      <span class="hljs-keyword">try</span> {
+        <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, e.target);
+        log(<span class="hljs-string">&quot;SW state change&quot;</span>, e.target.state, info.message);
+      } <span class="hljs-keyword">catch</span> (e) {
+        log(<span class="hljs-string">&quot;SW state change error, probably stale worker&quot;</span>, e);
+      }
+    });
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-14">&#x00a7;</a>
+              </div>
+              <h2 id="update-the-service-worker">Update the Service Worker</h2>
+<p>We reuse the <code>swRegistration</code> object we defined before. In case you want to
+isolate this in a sparate function, you can use <code>await navigator.serviceWorker.getRegistration()</code></p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  log(<span class="hljs-string">&quot;Subscribe to updates&quot;</span>);
+  swRegistration.addEventListener(<span class="hljs-string">&quot;updatefound&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-15">&#x00a7;</a>
+              </div>
+              <p>To access the registration we use the <code>swRegistration</code> variable in the
+outer scope. In case we don’t have access to it, we can also use <code>this</code>,
+i.e. <code>const registration = this</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    log(<span class="hljs-string">&quot;Update found&quot;</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-16">&#x00a7;</a>
+              </div>
+              <p>Look how cool! To get the new Service Worker we use the <code>installing</code>
+attribute of the registration.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> newSW = swRegistration.installing;
+
+    newSW.addEventListener(<span class="hljs-string">&quot;statechange&quot;</span>, <span class="hljs-keyword">async</span> (e) =&gt; {
+      <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, e.target);
+      log(<span class="hljs-string">&quot;New SW state change&quot;</span>, e.target.state, info.message);
+    });</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-17">&#x00a7;</a>
+              </div>
+              <p>We can wait until the new Service Worker is ready to prompt the user to
+update it.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">await</span> newSW.ready;
+    promptForUpdate(newSW);
+  });</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-18">&#x00a7;</a>
+              </div>
+              <h2 id="check-for-updates">Check for updates</h2>
+<p>The browser checks for updates every time the page is reloaded. To smooth
+the update process, we can check for updates periodically and manually.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-19">&#x00a7;</a>
+              </div>
+              <p>To check for updates periodically, you can run the <code>update</code> method at specific intervals.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-built_in">window</span>.setInterval(<span class="hljs-function">() =&gt;</span> {
+    log(<span class="hljs-string">&quot;Check for updates&quot;</span>);
+    swRegistration.update();
+  }, <span class="hljs-number">60000</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-20">&#x00a7;</a>
+              </div>
+              <p>To check for updates manually, you can bind it to a button.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">&quot;checkForUpdates&quot;</span>).addEventListener(<span class="hljs-string">&quot;click&quot;</span>, <span class="hljs-function">() =&gt;</span> {
+    log(<span class="hljs-string">&quot;Check for updates&quot;</span>);
+    swRegistration.update();
+  });</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-21">&#x00a7;</a>
+              </div>
+              <p>Reload app</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-built_in">document</span>
+    .getElementById(<span class="hljs-string">&quot;reloadApp&quot;</span>)
+    .addEventListener(<span class="hljs-string">&quot;click&quot;</span>, <span class="hljs-function">() =&gt;</span> <span class="hljs-built_in">window</span>.location.reload());
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-22">&#x00a7;</a>
+              </div>
+              <h1 id="paraphernalia">Paraphernalia</h1>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-23">&#x00a7;</a>
+              </div>
+              <h2 id="boot-the-application">Boot the application</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>boot().catch(<span class="hljs-built_in">console</span>.log);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-24">&#x00a7;</a>
+              </div>
+              <h2 id="communicate-with-a-specific-service-worker">Communicate with a specific Service Worker</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">post</span>(<span class="hljs-params">message, sw</span>) </span>{
+  <span class="hljs-keyword">if</span> (!sw) {
+    sw = navigator.serviceWorker.controller;
+  }
+  <span class="hljs-keyword">if</span> (!sw) {
+    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">&quot;No controller available&quot;</span>);
+  }
+  <span class="hljs-keyword">const</span> channel = <span class="hljs-keyword">new</span> MessageChannel();
+  <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function">(<span class="hljs-params">resolve, reject</span>) =&gt;</span> {
+    channel.port1.onmessage = <span class="hljs-function">(<span class="hljs-params">event</span>) =&gt;</span> {
+      resolve(event.data);
+    };
+    channel.port1.onmessageerror = <span class="hljs-function">(<span class="hljs-params">event</span>) =&gt;</span> {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">&quot;Message error&quot;</span>, event);
+      reject(event);
+    };
+    sw.postMessage(message, [channel.port2]);
+  });
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-25">&#x00a7;</a>
+              </div>
+              <h2 id="log-in-the-document">Log in the document</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">log</span>(<span class="hljs-params">...args</span>) </span>{
+  <span class="hljs-keyword">const</span> now = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Date</span>();
+  <span class="hljs-keyword">const</span> time = [now.getHours(), now.getMinutes(), now.getSeconds()].map(<span class="hljs-function">(<span class="hljs-params">x</span>) =&gt;</span>
+    x.toString().padStart(<span class="hljs-number">2</span>, <span class="hljs-number">0</span>)
+  );
+  <span class="hljs-keyword">const</span> container = <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">&quot;log&quot;</span>);
+  <span class="hljs-keyword">const</span> line = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">&quot;li&quot;</span>);
+  line.textContent = <span class="hljs-string">`<span class="hljs-subst">${time.join(<span class="hljs-string">&quot;:&quot;</span>)}</span> <span class="hljs-subst">${args.join(<span class="hljs-string">&quot; &quot;</span>)}</span>`</span>;
+  container.appendChild(line);
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-26">&#x00a7;</a>
+              </div>
+              <h2 id="show-or-hide-the-update-button">Show or hide the update button</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">promptForUpdate</span>(<span class="hljs-params">newSW</span>) </span>{
+  <span class="hljs-keyword">const</span> button = <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">&quot;updateServiceWorker&quot;</span>);
+  button.classList.remove(<span class="hljs-string">&quot;hide&quot;</span>);
+  button.addEventListener(<span class="hljs-string">&quot;click&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {
+    post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;skipWaiting&quot;</span> }, newSW);
+    button.classList.add(<span class="hljs-string">&quot;hide&quot;</span>);
+  });
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-27">&#x00a7;</a>
+              </div>
+              
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

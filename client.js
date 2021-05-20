@@ -221,3 +221,6 @@ function promptForUpdate(newSW) {
 
 // [hide-and-seek]: https://www.thinktecture.com/en/pwa/playing-hide-and-seek-with-my-serviceworker-instance/
 // [mdn:ServiceWorkerRegistration]: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
+// [firt:whatsNew]: https://medium.com/@firt/whats-new-on-ios-12-2-for-progressive-web-apps-75c348f8e945
+// https://stackoverflow.com/questions/55581719/reactjs-pwa-not-updating-on-ios
+// https://github.com/facebook/create-react-app/issues/7237
