@@ -1,4 +1,4 @@
-const VERSION = "v1";
+const VERSION = "v46";
 const logs = [];
 
 log = (function () {

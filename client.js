@@ -10,6 +10,19 @@
 //
 // - `navigator.serviceWorker` is **not** a Service Worker, it's a Service
 // Worker Container.
+//
+// ## Unexpected life-cycle behavior
+//
+// I've noticed the following flow on when the page is opened for the first
+// time.
+//
+// - The service worker is installed for the first time.
+// - If the service worker is updated and the page is *not* refreshed, the new
+// service worker is immediately activated.
+//
+// If the page is reloaded, then the new service worker is first installed, and
+// then eventually activated when `skipWaiting` is called.
+//
 
 async function boot() {
   // Let's start!
@@ -95,7 +108,8 @@ async function boot() {
     log("Installing", info.message);
   } else if (swRegistration.waiting) {
     // `waiting` is undefined, or contains the instance of the Service Worker
-    // waiting to be activated.
+    // waiting to be activated. If the user reloads the page and there is a
+    // Service Worker that is *pending* to get activated, you'll find it here.
     serviceWorker = swRegistration.waiting;
     const info = await post({ action: "info" }, serviceWorker);
     log("Waiting", info.message);
@@ -113,12 +127,7 @@ async function boot() {
   if (serviceWorker) {
     // Now we can subscribe to the state changes of the Service Worker.
     serviceWorker.addEventListener("statechange", async (e) => {
-      try {
-        const info = await post({ action: "info" }, e.target);
-        log("SW state change", e.target.state, info.message);
-      } catch (e) {
-        log("SW state change error, probably stale worker", e);
-      }
+      log("Controller SW state change:", e.target.state);
     });
   }
 
@@ -136,12 +145,9 @@ async function boot() {
     // Look how cool! To get the new Service Worker we use the `installing`
     // attribute of the registration.
     const newSW = swRegistration.installing;
-
     newSW.addEventListener("statechange", async (e) => {
-      const info = await post({ action: "info" }, e.target);
-      log("New SW state change", e.target.state, info.message);
+      log("New SW state change:", e.target.state);
     });
-
     // We can wait until the new Service Worker is ready to prompt the user to
     // update it.
     await newSW.ready;
@@ -174,7 +180,11 @@ async function boot() {
 // # Paraphernalia
 
 // ## Boot the application
-boot().catch(console.log);
+if ("serviceWorker" in navigator) {
+  boot().catch(console.log);
+} else {
+  log("Service Worker API not supported");
+}
 
 // ## Communicate with a specific Service Worker
 async function post(message, sw) {
