@@ -1,6 +1,6 @@
 html {
   font-family: monospace;
-  background: rgb(202, 167, 167);
+  background: rgb(194, 202, 167);
 }
 
 ul {
@@ -14,4 +14,9 @@ li {
 
 .hide {
   display: none;
+}
+
+.commands li {
+  margin-bottom: 12px;
+  flex: 50%;
 }
