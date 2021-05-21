@@ -32,6 +32,16 @@ other browsers.</p>
 <li><code>navigator.serviceWorker</code> is <strong>not</strong> a Service Worker, it’s a Service
 Worker Container.</li>
 </ul>
+<h2 id="unexpected-life-cycle-behavior">Unexpected life-cycle behavior</h2>
+<p>I’ve noticed the following flow on when the page is opened for the first
+time.</p>
+<ul>
+<li>The service worker is installed for the first time.</li>
+<li>If the service worker is updated and the page is <em>not</em> refreshed, the new
+service worker is immediately activated.</li>
+</ul>
+<p>If the page is reloaded, then the new service worker is first installed, and
+then eventually activated when <code>skipWaiting</code> is called.</p>
 
             </div>
             
@@ -75,7 +85,9 @@ installation of its Service Worker. So when you run this code for the first time
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">const</span> swCurrentRegistration = <span class="hljs-keyword">await</span> navigator.serviceWorker.getRegistration();
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">const</span> swCurrentRegistration = <span class="hljs-keyword">await</span> navigator.serviceWorker.getRegistration(
+    <span class="hljs-string">&quot;.&quot;</span>
+  );
   <span class="hljs-keyword">if</span> (swCurrentRegistration) {
     log(<span class="hljs-string">&quot;SW Registration found&quot;</span>);
   } <span class="hljs-keyword">else</span> {
@@ -166,7 +178,8 @@ actually.</p>
   <span class="hljs-keyword">try</span> {
     log(<span class="hljs-string">&quot;Register the Service Worker&quot;</span>);
     swRegistration = <span class="hljs-keyword">await</span> navigator.serviceWorker.register(
-      <span class="hljs-string">&quot;service-worker.js&quot;</span>
+      <span class="hljs-string">&quot;service-worker.js&quot;</span>,
+      { <span class="hljs-attr">scope</span>: <span class="hljs-string">&quot;.&quot;</span> }
     );
   } <span class="hljs-keyword">catch</span> (e) {
     log(<span class="hljs-string">&quot;Error&quot;</span>, e);
@@ -223,7 +236,8 @@ Service Worker instance.</p>
                 <a class="ss" href="#section-10">&#x00a7;</a>
               </div>
               <p><code>waiting</code> is undefined, or contains the instance of the Service Worker
-waiting to be activated.</p>
+waiting to be activated. If the user reloads the page and there is a
+Service Worker that is <em>pending</em> to get activated, you’ll find it here.</p>
 
             </div>
             
@@ -282,12 +296,7 @@ that controls the page. This property is the same as
             </div>
             
             <div class="content"><div class='highlight'><pre>    serviceWorker.addEventListener(<span class="hljs-string">&quot;statechange&quot;</span>, <span class="hljs-keyword">async</span> (e) =&gt; {
-      <span class="hljs-keyword">try</span> {
-        <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, e.target);
-        log(<span class="hljs-string">&quot;SW state change&quot;</span>, e.target.state, info.message);
-      } <span class="hljs-keyword">catch</span> (e) {
-        log(<span class="hljs-string">&quot;SW state change error, probably stale worker&quot;</span>, e);
-      }
+      log(<span class="hljs-string">&quot;Controller SW state change:&quot;</span>, e.target.state);
     });
   }</pre></div></div>
             
@@ -341,10 +350,8 @@ attribute of the registration.</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> newSW = swRegistration.installing;
-
     newSW.addEventListener(<span class="hljs-string">&quot;statechange&quot;</span>, <span class="hljs-keyword">async</span> (e) =&gt; {
-      <span class="hljs-keyword">const</span> info = <span class="hljs-keyword">await</span> post({ <span class="hljs-attr">action</span>: <span class="hljs-string">&quot;info&quot;</span> }, e.target);
-      log(<span class="hljs-string">&quot;New SW state change&quot;</span>, e.target.state, info.message);
+      log(<span class="hljs-string">&quot;New SW state change:&quot;</span>, e.target.state);
     });</pre></div></div>
             
         </li>
@@ -460,7 +467,11 @@ the update process, we can check for updates periodically and manually.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>boot().catch(<span class="hljs-built_in">console</span>.log);</pre></div></div>
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">if</span> (<span class="hljs-string">&quot;serviceWorker&quot;</span> <span class="hljs-keyword">in</span> navigator) {
+  boot().catch(<span class="hljs-built_in">console</span>.log);
+} <span class="hljs-keyword">else</span> {
+  log(<span class="hljs-string">&quot;Service Worker API not supported&quot;</span>);
+}</pre></div></div>
             
         </li>
         
@@ -550,7 +561,9 @@ the update process, we can check for updates periodically and manually.</p>
               <div class="sswrap ">
                 <a class="ss" href="#section-27">&#x00a7;</a>
               </div>
-              
+              <p><a href="https://stackoverflow.com/questions/55581719/reactjs-pwa-not-updating-on-ios">https://stackoverflow.com/questions/55581719/reactjs-pwa-not-updating-on-ios</a>
+<a href="https://github.com/facebook/create-react-app/issues/7237">https://github.com/facebook/create-react-app/issues/7237</a></p>
+
             </div>
             
         </li>

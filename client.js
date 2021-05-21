@@ -22,7 +22,6 @@
 //
 // If the page is reloaded, then the new service worker is first installed, and
 // then eventually activated when `skipWaiting` is called.
-//
 
 async function boot() {
   // Let's start!
@@ -39,7 +38,9 @@ async function boot() {
   // current scope, or on the very first run of a web page *before* the
   // installation of its Service Worker. So when you run this code for the first time,
   // `swRegistration` will be `undefined`.
-  const swCurrentRegistration = await navigator.serviceWorker.getRegistration();
+  const swCurrentRegistration = await navigator.serviceWorker.getRegistration(
+    "."
+  );
   if (swCurrentRegistration) {
     log("SW Registration found");
   } else {
@@ -86,7 +87,8 @@ async function boot() {
   try {
     log("Register the Service Worker");
     swRegistration = await navigator.serviceWorker.register(
-      "service-worker.js"
+      "service-worker.js",
+      { scope: "." }
     );
   } catch (e) {
     log("Error", e);
