@@ -2,9 +2,9 @@
   "short_name": "Playground",
   "name": "Playground",
   "description": "Service Worker API Playground",
-  "start_url": "/",
+  "start_url": ".",
   "background_color": "#000000",
   "display": "standalone",
-  "scope": "/",
+  "scope": ".",
   "theme_color": "#000000"
 }
