@@ -177,6 +177,16 @@ async function boot() {
   document
     .getElementById("reloadApp")
     .addEventListener("click", () => window.location.reload());
+
+  // Unregister service worker
+  document
+    .getElementById("unregisterServiceWorker")
+    .addEventListener("click", async () => {
+      const registration = await navigator.serviceWorker.getRegistration(".");
+      if (registration) {
+        await registration.unregister();
+      }
+    });
 }
 
 // # Paraphernalia
