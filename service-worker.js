@@ -1,4 +1,4 @@
-const VERSION = "v52";
+const VERSION = "v81";
 const logs = [];
 
 log = (function () {
@@ -8,16 +8,23 @@ log = (function () {
 
 log(`[SW:${VERSION}] boot`);
 
-const contentToCache = ["./", "client.js", "style.css", "manifest.webmanifest"];
+const contentToCache = ["./", "index.js", "style.css", "manifest.webmanifest"];
+
+async function wait(seconds) {
+  while (seconds-- > 0) {
+    console.log(`[SW:${VERSION}] Sleep ${seconds} seconds more.`);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
 
 function addToCache() {
-  console.log(`[Service Worker ${VERSION}] Caching app`);
+  console.log(`[SW:${VERSION}] Caching app`);
   return caches.open(VERSION).then((cache) =>
     Promise.all(
       contentToCache.map((url) =>
         fetch(`${url}?${VERSION}`).then((response) => {
           if (!response.ok) {
-            console.error(`[Service Worker ${VERSION}] Cannot fetch`, url);
+            console.error(`[SW:${VERSION}] Cannot fetch`, url);
             throw Error(`Cannot fetch ${url}`);
           }
           return cache.put(url, response);
@@ -30,43 +37,43 @@ function addToCache() {
 async function retrieve({ request }) {
   let response = await caches.match(request);
   if (!response) {
-    console.log(`[Service Worker ${VERSION}] Fetch miss`, request.url);
+    console.log(`[SW:${VERSION}] Fetch miss`, request.url);
     response = await fetch(request);
     // Don't cache responses for now.
     // const cache = await caches.open(cacheName);
     // console.log("[Service Worker] Caching new resource: " + request.url);
     // cache.put(request, response.clone());
   } else {
-    console.log(`[Service Worker ${VERSION}] Fetch hit`, request.url);
+    console.log(`[SW:${VERSION}] Fetch hit`, request.url);
   }
   return response;
 }
 
 async function clearCaches() {
-  console.log(`[Service Worker ${VERSION}] Clear cache`);
+  console.log(`[SW:${VERSION}] Clear cache`);
   const keys = (await caches.keys()).filter((key) => key !== VERSION);
   return Promise.all(keys.map((key) => caches.delete(key)));
 }
 
 function boot() {
-  console.log(`[Service Worker ${VERSION}] Register Listener: install`);
+  console.log(`[SW:${VERSION}] Register Listener: install`);
   self.addEventListener("install", (e) => {
-    e.waitUntil(addToCache());
+    e.waitUntil(Promise.all([addToCache(), wait(10)]));
   });
 
-  console.log(`[Service Worker ${VERSION}] Register Listener: fetch`);
+  console.log(`[SW:${VERSION}] Register Listener: fetch`);
   self.addEventListener("fetch", (e) => {
     e.respondWith(retrieve(e));
   });
 
-  console.log(`[Service Worker ${VERSION}] Register Listener: activate`);
+  console.log(`[SW:${VERSION}] Register Listener: activate`);
   self.addEventListener("activate", (e) => {
-    console.log(`[Service Worker ${VERSION}] Activate`);
+    console.log(`[SW:${VERSION}] Activate`);
     e.waitUntil(clearCaches());
   });
 
   self.addEventListener("message", function (event) {
-    console.log("[Service Worker] Message:", event);
+    console.log(`[SW:${VERSION}] Message:`, event);
     const port = event.ports[0];
     switch (event.data.action) {
       case "logs":
